@@ -1,4 +1,4 @@
-# FSB_Final_Project
+# MSEK28_PPR501_Nhóm 6: Final Project
 Đề bài:
 Thiết kế hệ thống tạo, quản lý ngân hàng đề thi, thi
 trắc nghiệm sử dụng Python & các framework dựa trên
