@@ -11,7 +11,7 @@ import config
 def insert_or_update_docx_file(file_path: str, subject: str):
     # 1. Validate file extension
     if not file_path.lower().endswith(".docx"):
-        print("❌ Only .docx files are allowed.")
+        print("Only .docx files are allowed.")
         return
 
     file_name = os.path.basename(file_path)
