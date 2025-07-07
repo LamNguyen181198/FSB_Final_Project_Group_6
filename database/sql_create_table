@@ -1,0 +1,10 @@
+--Create Table first before doing anything
+
+DROP TABLE IF EXISTS exam_documents;
+
+CREATE TABLE exam_documents(
+	ID INTEGER PRIMARY KEY AUTOINCREMENT,
+	document STRING,
+	subject STRING,
+	added_date DATE
+)
