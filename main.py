@@ -37,7 +37,7 @@ init_db()
 def get_document():
     conn = sqlite3.connect("database/exam_documents.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT id, file_path FROM exam_documents")
+    cursor.execute("SELECT DISTINCT id, file_path FROM exam_documents")
     rows = cursor.fetchall()
     conn.close()
     return [{"id": row[0], "file_path": row[1]} for row in rows]
@@ -55,8 +55,8 @@ def add_document(
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO exam_documents (file_path)
-            VALUES  (?)
-        """, (file_location))
+            VALUES (?)
+        """, (file_location,))
         conn.commit()
         new_id = cursor.lastrowid
         conn.close()
@@ -66,4 +66,7 @@ def add_document(
             "file_path": file_location
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Optional: log full error to console
         raise HTTPException(status_code=500, detail=str(e))
+

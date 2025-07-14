@@ -1,5 +1,6 @@
 # desktop_app.py
 import tkinter as tk
+from docx import Document
 from tkinter import filedialog as fd
 from tkinter import ttk, messagebox
 import requests
@@ -21,23 +22,28 @@ def refresh_table():
     except Exception as e:
         messagebox.showerror("Error", f"Failed to fetch documents:\n{e}")
 
+def display_docx_content(file_path):
+    try:
+        doc = Document(file_path)
+        content = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+        text_output.delete("1.0", tk.END)
+        text_output.insert(tk.END, content if content else "[Empty document]")
+    except Exception as e:
+        messagebox.showerror("Read Error", f"Failed to read .docx content:\n{e}")
+
 def browse_file():
     global selected_file_path
     path = fd.askopenfilename(title="Select any file", filetypes=[("All files", "*.*")])
     if path:
         if not path.lower().endswith(".docx"):
-            messagebox.showerror("Invalid File", "Please select a valid .docx Word document.")
-            selected_file_path = None
-            selected_file_label.config(text="No file selected")
-            return
+            messagebox.showwarning("File Warning", "This file is not a .docx file. It may not be supported.")
 
         selected_file_path = path
         selected_file_label.config(text=f"Selected File: {os.path.basename(path)}")
-
+        display_docx_content(selected_file_path)
 
 def add_document():
     global selected_file_path
-
     if not selected_file_path:
         messagebox.showwarning("No File", "Please select a .docx file.")
         return
@@ -76,6 +82,11 @@ tree = ttk.Treeview(root, columns=("ID","File Path"), show="headings")
 tree.heading("ID", text="ID")
 tree.heading("File Path", text="File Path")
 tree.pack(padx=10, pady=10, fill="both", expand=True)
+
+# Display document content
+tk.Label(root, text="Document Content Preview:").pack(pady=(10, 0))
+text_output = tk.Text(root, height=10, wrap="word")
+text_output.pack(padx=10, pady=5, fill="both", expand=True)
 
 refresh_table()
 
