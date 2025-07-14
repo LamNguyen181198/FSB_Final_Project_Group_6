@@ -1,60 +1,75 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
+# main.py
+from fastapi import FastAPI, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
+import sqlite3
 import os
+import shutil
 
-from import_docx import insert_or_update_docx_file
+app = FastAPI()
 
+# Allow CORS from desktop app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class DocxImporterApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
+UPLOAD_FOLDER = "uploaded_docs"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        self.title("Exam Document Importer")
-        self.geometry("450x250")
-        self.resizable(False, False)
+# SQLite init
+def init_db():
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS exam_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            file_path TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-        # Subject Input
-        tk.Label(self, text="Enter Subject:", font=("Segoe UI", 10)).pack(pady=(20, 5))
-        self.subject_entry = tk.Entry(self, width=50, font=("Segoe UI", 10))
-        self.subject_entry.pack()
+init_db()
 
-        # File Selection
-        tk.Label(self, text="Choose a .docx exam file:", font=("Segoe UI", 10)).pack(pady=(20, 5))
-        tk.Button(self, text="📂 Browse for .docx File", command=self.select_file, width=30).pack()
+@app.get("/document")
+def get_document():
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, document_name, subject, file_path FROM exam_documents")
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"id": row[0], "document_name": row[1], "subject": row[2], "file_path": row[3]} for row in rows]
 
-        # Display selected file
-        self.selected_file_label = tk.Label(self, text="No file selected", fg="gray", font=("Segoe UI", 9))
-        self.selected_file_label.pack(pady=(5, 0))
+@app.post("/add_document")
+def add_document(
+    document_name: str = Form(...),
+    subject: str = Form(...),
+    file: UploadFile = Form(...)
+):
+    try:
+        file_location = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(file_location, "wb") as f:
+            shutil.copyfileobj(file.file, f)
 
-        # Footer Status
-        self.status_label = tk.Label(self, text="", fg="blue", font=("Segoe UI", 9))
-        self.status_label.pack(pady=(15, 0))
+        conn = sqlite3.connect("database/exam_documents.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO exam_documents (document_name, subject, file_path)
+            VALUES (?, ?, ?)
+        """, (document_name, subject, file_location))
+        conn.commit()
+        new_id = cursor.lastrowid
+        conn.close()
 
-        self.file_path = None
-
-    def select_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Word Documents", "*.docx")])
-        if not file_path:
-            return
-
-        subject = self.subject_entry.get().strip()
-        if not subject:
-            messagebox.showwarning("Missing Subject", "Please enter a subject before selecting a file.")
-            return
-
-        self.file_path = file_path
-        file_name = os.path.basename(file_path)
-        self.selected_file_label.config(text=f"Selected file: {file_name}")
-
-        try:
-            insert_or_update_docx_file(file_path, subject)
-            messagebox.showinfo("Success", f"File '{file_name}' imported under subject '{subject}'.")
-            self.status_label.config(text="Import successful", fg="green")
-        except Exception as e:
-            messagebox.showerror("Error", f"❌ Failed to import file: {str(e)}")
-            self.status_label.config(text="Import failed", fg="red")
-
-
-if __name__ == "__main__":
-    app = DocxImporterApp()
-    app.mainloop()
+        return {
+            "id": new_id,
+            "document_name": document_name,
+            "subject": subject
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

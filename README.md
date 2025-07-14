@@ -38,28 +38,10 @@ Trước khi làm mọi thứ, thì tạo 1 branch riêng của mình trước r
     - Python
     - DBeaver
     - PyCharm (hoặc IDE nào mọi người thích sử dụng)
-    
-- **Bước 1: Chạy các câu SQL ở trong file database**
-  - Cách nhanh nhất là dựng dbeaver (hoặc bất cứ SQL reader nào mà mọi người muốn) rồi chạy lệnh CREATE TABLE trong đó
-    - Để kết nối với dbeaver: 
-    - Vào "New Database Connection" (hoặc bấm CTRL + SHIFT + N hay cái tương tự trên Mac)
-    - Chọn SQLite3
-    - Copy đường dẫn đến file _**'document_database'**_ ở trong thư mục databse trong cùng project này (trong PyCharm 
-    có cái copy path mọi người có thể dùng cái đó)
-  - Khi kết nối đc với DB:
-    - Click chuột phải lên cái database _**'document_database'**_ mới được khởi tạo
-    - Chọn _**'SQL Editor'**_
-    - Chọn _**'New SQL Script'**_
-    - Copy câu lệnh CREATE TABLE ở trong file _**'sql_create_table'**_ vào canvas đã được mở 
-    - Bấm mũi tên màu cam đầu tiên ở trong canvas (hoặc dùng tổ hợp CTRL + ENTER) để chạy script
-      - Lưu ý: Bôi đen câu lệnh nào thì DBeaver sẽ chỉ chạy câu lệnh đó. Nếu ko bôi đen thì nó sẽ 
-      chạy tất cả câu lệnh từ trên xuống. Nếu cần chạy hết thì mỗi câu query phải có dấu ";" ở cuối.
-    - Khi tạo xong (và ko có lỗi), chạy câu lệnh "SELECT * FROM exam_documents" để confirm là bảng đã được tạo. 
-    
-- **Bước 2: Chạy thử desktop app**
+ 
+- **Bước 1: Chạy thử desktop app**
   - App hiện tại vẫn đang WIP
-  - Chạy thử = câu lệnh _**"python main.py"**_
-  - Nó sẽ hiện lên 1 cái UI box gồm 1 slot để điền tên môn học và 1 nút để hiện cửa sổ 
-  nhét file .docx vào.  
-  - Khi hoàn thành, chạy lại câu lệnh "SELECT * FROM exam_documents" để xem script đã lưu được kết quả chưa. 
+  - Chạy lệnh uvicorn main:app --reload để chạy backend process
+  - Mở 1 terminal mới và chạy lệnh python app.py 
+  - Làm theo hướng dẫn con app hiện ra (document lấy ở trong sample_doc) 
     
