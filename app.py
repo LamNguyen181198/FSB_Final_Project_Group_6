@@ -5,6 +5,9 @@ from tkinter import filedialog as fd
 from tkinter import ttk, messagebox
 import requests
 import os
+from PIL import Image, ImageTk
+import io
+import zipfile
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -23,13 +26,40 @@ def refresh_table():
         messagebox.showerror("Error", f"Failed to fetch documents:\n{e}")
 
 def display_docx_content(file_path):
+    text_output.delete("1.0", tk.END)
+    image_canvas.delete("all")
+    image_refs.clear()
+
     try:
         doc = Document(file_path)
-        content = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-        text_output.delete("1.0", tk.END)
-        text_output.insert(tk.END, content if content else "[Empty document]")
+
+        # --- Extract paragraphs
+        for para in doc.paragraphs:
+            if para.text.strip():
+                text_output.insert(tk.END, para.text + "\n")
+
+        # --- Extract tables
+        for table in doc.tables:
+            text_output.insert(tk.END, "\n[Table]\n")
+            for row in table.rows:
+                row_data = [cell.text.strip() for cell in row.cells]
+                text_output.insert(tk.END, " | ".join(row_data) + "\n")
+
+        # --- Extract and render images
+        with zipfile.ZipFile(file_path) as docx_zip:
+            image_files = [f for f in docx_zip.namelist() if f.startswith("word/media/")]
+            y_offset = 10
+            for img_name in image_files:
+                with docx_zip.open(img_name) as img_file:
+                    img = Image.open(io.BytesIO(img_file.read()))
+                    img.thumbnail((300, 300))
+                    tk_img = ImageTk.PhotoImage(img)
+                    image_canvas.create_image(10, y_offset, anchor="nw", image=tk_img)
+                    image_refs.append(tk_img)  # Prevent garbage collection
+                    y_offset += img.height + 10
+
     except Exception as e:
-        messagebox.showerror("Read Error", f"Failed to read .docx content:\n{e}")
+        messagebox.showerror("Read Error", f"Error reading document: {e}")
 
 def browse_file():
     global selected_file_path
@@ -63,7 +93,7 @@ def add_document():
 # UI setup
 root = tk.Tk()
 root.title("Document Management Desktop App")
-root.geometry("900x600")
+root.geometry("1200x800")
 
 frame_form = tk.Frame(root)
 frame_form.pack(pady=10)
@@ -87,6 +117,14 @@ tree.pack(padx=10, pady=10, fill="both", expand=True)
 tk.Label(root, text="Document Content Preview:").pack(pady=(10, 0))
 text_output = tk.Text(root, height=10, wrap="word")
 text_output.pack(padx=10, pady=5, fill="both", expand=True)
+
+# Add a canvas for images
+tk.Label(root, text="Embedded Images:").pack(pady=(10, 0))
+image_canvas = tk.Canvas(root, height=300)
+image_canvas.pack(padx=10, pady=5, fill="both", expand=False)
+
+# To hold image references (to avoid garbage collection)
+image_refs = []
 
 refresh_table()
 
