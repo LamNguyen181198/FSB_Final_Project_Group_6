@@ -7,26 +7,52 @@ class QuestionImporter:
 
     def import_from_docx(self, file_path):
         doc = DocxDocument(file_path)
-        subject = None
-        content = None
-        options = []
-        answer = None
 
+        # Get subject from the first few paragraphs
+        subject = None
         for para in doc.paragraphs:
             text = para.text.strip()
-            if text.startswith("Môn:"):
-                subject = text.replace("Môn:", "").strip()
-            elif text.startswith("Câu hỏi:"):
-                content = text.replace("Câu hỏi:", "").strip()
-            elif text.startswith("A.") or text.startswith("B.") or text.startswith("C.") or text.startswith("D."):
-                options.append(text)
-            elif text.startswith("Đáp án:"):
-                answer = text.replace("Đáp án:", "").strip()
-                if subject and content and options and answer:
+            if text.startswith("Subject:"):
+                subject = text.replace("Subject:", "").strip()
+                break
+
+        if not subject:
+            print("[ERROR] Subject not found in document.")
+            return False
+
+        for table in doc.tables:
+            rows = table.rows
+            i = 0
+            while i < len(rows):
+                if len(rows[i].cells) < 2:
+                    i += 1
+                    continue
+
+                row0 = [c.text.strip() for c in rows[i].cells]
+                if not row0[0].startswith("QN="):
+                    i += 1
+                    continue
+
+                content = row0[1]  # Question text
+                options = []
+                for j in range(1, 5):
+                    if i + j >= len(rows): break
+                    opt_row = [c.text.strip() for c in rows[i + j].cells]
+                    if len(opt_row) >= 2:
+                        options.append(f"{opt_row[0]} {opt_row[1]}")
+                answer = None
+                if i + 5 < len(rows):
+                    ans_row = [c.text.strip() for c in rows[i + 5].cells]
+                    if ans_row[0].startswith("ANSWER:"):
+                        answer = ans_row[1]
+
+                # Save to DB if valid
+                if subject and content and len(options) == 4 and answer:
                     q = Question(subject, content, ";".join(options), answer)
                     self.db.add_question(q)
-                    # reset cho câu tiếp theo
-                    content = None
-                    options = []
-                    answer = None
+                    print(f"[IMPORTED] {content[:30]}...")
+
+                # Move to next question block
+                i += 9  # Assuming fixed row pattern
+
         return True
