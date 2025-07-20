@@ -119,19 +119,19 @@ upload_button = tk.Button(tab_doc, text="Upload Document", command=add_document)
 upload_button.pack(pady=10)
 
 # Table
-tree = ttk.Treeview(root, columns=("ID","File Path"), show="headings")
+tree = ttk.Treeview(tab_doc, columns=("ID","File Path"), show="headings")
 tree.heading("ID", text="ID")
 tree.heading("File Path", text="File Path")
 tree.pack(padx=10, pady=10, fill="both", expand=True)
 
 # Display document content
-tk.Label(root, text="Document Content Preview:").pack(pady=(10, 0))
-text_output = tk.Text(root, height=10, wrap="word")
+tk.Label(tab_doc, text="Document Content Preview:").pack(pady=(10, 0))
+text_output = tk.Text(tab_doc, height=10, wrap="word")
 text_output.pack(padx=10, pady=5, fill="both", expand=True)
 
 # Add a canvas for images
-tk.Label(root, text="Embedded Images:").pack(pady=(10, 0))
-image_canvas = tk.Canvas(root, height=300)
+tk.Label(tab_doc, text="Embedded Images:").pack(pady=(10, 0))
+image_canvas = tk.Canvas(tab_doc, height=300)
 image_canvas.pack(padx=10, pady=5, fill="both", expand=False)
 
 # To hold image references (to avoid garbage collection)
