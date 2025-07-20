@@ -8,6 +8,10 @@ import os
 from PIL import Image, ImageTk
 import io
 import zipfile
+from part2_bacdd1 import db, importer
+from part2_bacdd1.models import Question
+from part2_bacdd1.db import Database
+db = Database()
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -95,16 +99,23 @@ root = tk.Tk()
 root.title("Document Management Desktop App")
 root.geometry("1200x800")
 
-frame_form = tk.Frame(root)
+notebook = ttk.Notebook(root)
+tab_doc = tk.Frame(notebook)
+tab_question = tk.Frame(notebook)
+notebook.add(tab_doc, text="Document Management")
+notebook.add(tab_question, text="Question Management")
+notebook.pack(fill="both", expand=True)
+
+frame_form = tk.Frame(tab_doc)
 frame_form.pack(pady=10)
 
-browse_button = tk.Button(root, text="Add File", command=browse_file)
+browse_button = tk.Button(tab_doc, text="Add File", command=browse_file)
 browse_button.pack(pady=5)
 
-selected_file_label = tk.Label(root, text="No file selected", fg="gray")
+selected_file_label = tk.Label(tab_doc, text="No file selected", fg="gray")
 selected_file_label.pack()
 
-upload_button = tk.Button(root, text="Add Document", command=add_document)
+upload_button = tk.Button(tab_doc, text="Upload Document", command=add_document)
 upload_button.pack(pady=10)
 
 # Table
@@ -127,5 +138,132 @@ image_canvas.pack(padx=10, pady=5, fill="both", expand=False)
 image_refs = []
 
 refresh_table()
+
+# --- Tab 2: Question Management ---
+tk.Label(tab_question, text="Subject:").pack()
+subject_entry = tk.Entry(tab_question, width=50)
+subject_entry.pack()
+
+tk.Label(tab_question, text="Question Content:").pack()
+content_entry = tk.Entry(tab_question, width=80)
+content_entry.pack()
+
+tk.Label(tab_question, text="Options:").pack()
+options_frame = tk.Frame(tab_question)
+options_frame.pack()
+
+option_entries = []
+for opt in ["A", "B", "C", "D"]:
+    row = tk.Frame(options_frame)
+    row.pack(fill="x", pady=2)
+    label = tk.Label(row, text=f"Option {opt}:", width=12)
+    label.pack(side="left")
+    entry = tk.Entry(row, width=60)
+    entry.pack(side="left", fill="x", expand=True)
+    option_entries.append(entry)
+
+tk.Label(tab_question, text="Correct Answer:").pack()
+answer_entry = tk.Entry(tab_question, width=20)
+answer_entry.pack()
+
+def add_question():
+    subject = subject_entry.get().strip()
+    content = content_entry.get().strip()
+    answer = answer_entry.get().strip()
+
+    option_labels = ["A", "B", "C", "D"]
+    options = []
+    for label, entry in zip(option_labels, option_entries):
+        text = entry.get().strip()
+        if text:
+            options.append(f"{label}. {text}")
+
+    options_str = ";".join(options)
+
+    if subject and content and options_str and answer:
+        db.add_question(Question(subject, content, options_str, answer))
+        refresh_questions()
+        messagebox.showinfo("Add Question", "Question added successfully!")
+
+def refresh_questions():
+    subject = subject_entry.get().strip()
+    question_list.delete(0, tk.END)
+    for row in db.get_questions(subject):
+        question_list.insert(tk.END, f"{row[0]}: {row[1]} | {row[2]} | Answer: {row[3]}")
+
+def update_question():
+    selected = question_list.curselection()
+    if selected:
+        qid = question_list.get(selected[0]).split(":")[0]
+        subject = subject_entry.get().strip()
+        content = content_entry.get().strip()
+        answer = answer_entry.get().strip()
+
+        option_labels = ["A", "B", "C", "D"]
+        options = []
+        for label, entry in zip(option_labels, option_entries):
+            text = entry.get().strip()
+            if text:
+                options.append(f"{label}. {text}")
+
+        options_str = ";".join(options)
+
+        db.update_question(qid, subject, content, options_str, answer)
+        refresh_questions()
+        messagebox.showinfo("Update Question", "Question updated successfully!")
+
+def delete_question():
+    selected = question_list.curselection()
+    if selected:
+        qid = question_list.get(selected[0]).split(":")[0]
+        db.delete_question(qid)
+        refresh_questions()
+        messagebox.showinfo("Delete Question", "Question deleted successfully!")
+
+question_importer = importer.QuestionImporter(db)
+def import_questions_from_file():
+    path = fd.askopenfilename(title="Select question file (.docx)", filetypes=[("Word files", "*.docx")])
+    if path:
+        try:
+            question_importer.import_from_docx(path)
+            messagebox.showinfo("Success", "Questions imported successfully!")
+            refresh_questions()
+        except Exception as e:
+            messagebox.showerror("Import Error", str(e))
+
+question_list = tk.Listbox(tab_question, width=100)
+question_list.pack(padx=10, pady=10)
+
+question_list.bind('<<ListboxSelect>>', lambda e: on_select_question(e))
+
+def on_select_question(event):
+    selected = question_list.curselection()
+    if selected:
+        qid = question_list.get(selected[0]).split(":")[0]
+        subject = subject_entry.get().strip()
+        rows = db.get_questions(subject)
+        for row in rows:
+            if str(row[0]) == qid:
+                content_entry.delete(0, tk.END)
+                content_entry.insert(0, row[1])
+
+                opts = row[2].split(";")
+                for i, e in enumerate(option_entries):
+                    e.delete(0, tk.END)
+                    if i < len(opts):
+                        opt_text = opts[i].strip()
+                        if ". " in opt_text:
+                            opt_text = opt_text.split(". ", 1)[1]
+                        e.insert(0, opt_text)
+
+                answer_entry.delete(0, tk.END)
+                answer_entry.insert(0, row[3])
+                break
+
+tk.Button(tab_question, text="Import Questions from File", command=import_questions_from_file).pack(pady=10)
+tk.Button(tab_question, text="Load Questions", command=refresh_questions).pack()
+tk.Button(tab_question, text="Add Question", command=add_question).pack(pady=2)
+tk.Button(tab_question, text="Update Question", command=update_question).pack(pady=2)
+tk.Button(tab_question, text="Delete Question", command=delete_question).pack(pady=2)
 
 root.mainloop()
