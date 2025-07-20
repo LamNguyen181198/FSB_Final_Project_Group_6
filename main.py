@@ -70,3 +70,56 @@ def add_document(
         traceback.print_exc()  # Optional: log full error to console
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/questions/{subject}")
+def get_questions(subject: str):
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, content, options, answer FROM questions WHERE subject = ?", (subject,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"id": row[0], "content": row[1], "options": row[2], "answer": row[3]} for row in rows]
+
+@app.post("/questions")
+def add_question(
+    subject: str = Form(...),
+    content: str = Form(...),
+    options: str = Form(...),
+    answer: str = Form(...)
+):
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO questions (subject, content, options, answer)
+        VALUES (?, ?, ?, ?)
+    """, (subject, content, options, answer))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return {"id": new_id, "subject": subject, "content": content}
+
+@app.put("/questions/{id}")
+def update_question(
+    id: int,
+    subject: str = Form(...),
+    content: str = Form(...),
+    options: str = Form(...),
+    answer: str = Form(...)
+):
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE questions SET subject=?, content=?, options=?, answer=?
+        WHERE id=?
+    """, (subject, content, options, answer, id))
+    conn.commit()
+    conn.close()
+    return {"msg": "Updated"}
+
+@app.delete("/questions/{id}")
+def delete_question(id: int):
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM questions WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return {"msg": "Deleted"}
