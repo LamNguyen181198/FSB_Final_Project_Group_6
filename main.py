@@ -123,3 +123,12 @@ def delete_question(id: int):
     conn.commit()
     conn.close()
     return {"msg": "Deleted"}
+
+@app.get("/questions/{subject, number_of_questions}")
+def get_random_questions(subject: str, number_of_questions: int):
+    conn = sqlite3.connect("database/exam_documents.db")
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT id, content, options FROM questions WHERE subject = ? ORDER BY RANDOM() LIMIT {number_of_questions}", (subject,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"id": row[0], "content": row[1], "options": row[2]} for row in rows]
