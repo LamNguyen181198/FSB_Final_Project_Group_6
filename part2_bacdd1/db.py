@@ -58,6 +58,14 @@ class Database:
         conn.commit()
         conn.close()
 
+    def get_random_questions(self, subject, number_of_questions):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT id, content, options FROM questions WHERE subject=? ORDER BY RANDOM() LIMIT {number_of_questions}", (subject,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
 
     
     
